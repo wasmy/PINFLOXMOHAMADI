@@ -54,7 +54,11 @@ async def generate_image(brief: ContentBrief, config: dict, retry: bool = False)
                 image_bytes = await _together_fallback(positive_prompt, config, negative=negative)
             except Exception:
                 logger.warning("Together AI failed. Trying Hugging Face fallback...")
-                image_bytes = await _huggingface_fallback(positive_prompt, config, negative=negative)
+                try:
+                    image_bytes = await _huggingface_fallback(positive_prompt, config, negative=negative)
+                except Exception:
+                    logger.warning("Hugging Face failed. Using local Pillow fallback...")
+                    image_bytes = _pillow_generate(brief.target_keyword)
 
     image_hash = hashlib.sha256(image_bytes).hexdigest()
 
@@ -139,6 +143,99 @@ async def _huggingface_fallback(prompt: str, config: dict, negative: str = "") -
         )
         response.raise_for_status()
         return response.content
+
+
+def _pillow_generate(keyword: str) -> bytes:
+    """
+    Local fallback: generate a simple Pinterest-style pin using Pillow.
+    No external API required.
+    """
+    import io
+    import random
+    from PIL import Image, ImageDraw, ImageFont
+
+    width, height = 1000, 1500
+
+    # Pinterest-style color palettes
+    palettes = [
+        ("#F5E6D3", "#8B4513", "#D4A574"),  # Warm beige/brown
+        ("#E8F4F8", "#2C5F7A", "#7FB3C8"),  # Cool blue
+        ("#F0E6F6", "#6B2D8B", "#B57EC8"),  # Purple
+        ("#E6F4E8", "#2D6B3A", "#7EC88A"),  # Green
+        ("#FDE8E8", "#8B1A1A", "#C87070"),  # Red/pink
+        ("#E8EAF6", "#3F51B5", "#9FA8DA"),  # Indigo
+    ]
+    bg_color, text_color, accent_color = random.choice(palettes)
+
+    img = Image.new("RGB", (width, height), bg_color)
+    draw = ImageDraw.Draw(img)
+
+    # Background decorative elements
+    for i in range(6):
+        x = random.randint(0, width)
+        y = random.randint(0, height)
+        r = random.randint(40, 150)
+        draw.ellipse([x - r, y - r, x + r, y + r], fill=accent_color + "40")
+
+    # Top accent bar
+    draw.rectangle([0, 0, width, 12], fill=accent_color)
+    draw.rectangle([0, height - 12, width, height], fill=accent_color)
+
+    # Load font (fallback to default if not available)
+    try:
+        font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 72)
+        font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 40)
+        font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
+    except Exception:
+        font_large = ImageFont.load_default()
+        font_medium = font_large
+        font_small = font_large
+
+    # Wrap keyword text
+    words = keyword.upper().split()
+    lines = []
+    line = ""
+    for word in words:
+        test = (line + " " + word).strip()
+        bbox = draw.textbbox((0, 0), test, font=font_large)
+        if bbox[2] > width - 80 and line:
+            lines.append(line)
+            line = word
+        else:
+            line = test
+    if line:
+        lines.append(line)
+
+    # Draw keyword lines centered
+    total_text_h = len(lines) * 90
+    y_start = (height // 2) - (total_text_h // 2) - 60
+    for line in lines:
+        bbox = draw.textbbox((0, 0), line, font=font_large)
+        x = (width - (bbox[2] - bbox[0])) // 2
+        # Shadow
+        draw.text((x + 3, y_start + 3), line, font=font_large, fill="#00000030")
+        draw.text((x, y_start), line, font=font_large, fill=text_color)
+        y_start += 90
+
+    # Divider line
+    draw.rectangle([(width // 2 - 120), y_start + 20, (width // 2 + 120), y_start + 24], fill=accent_color)
+
+    # Subtitle
+    subtitle = "Digital Download • Etsy"
+    bbox = draw.textbbox((0, 0), subtitle, font=font_medium)
+    x = (width - (bbox[2] - bbox[0])) // 2
+    draw.text((x, y_start + 45), subtitle, font=font_medium, fill=text_color)
+
+    # Bottom CTA
+    cta = "Shop Now on Etsy ✦"
+    bbox = draw.textbbox((0, 0), cta, font=font_small)
+    x = (width - (bbox[2] - bbox[0])) // 2
+    draw.rectangle([(width // 2 - 180), height - 130, (width // 2 + 180), height - 70], fill=accent_color)
+    draw.text((x, height - 118), cta, font=font_small, fill=bg_color)
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
 
 
 async def _comfyui_fallback(prompt: str, config: dict, negative: str = "") -> bytes:
