@@ -48,11 +48,11 @@ async def generate_image(brief: ContentBrief, config: dict, retry: bool = False)
     else:
         try:
             image_bytes = await _pollinations_generate(positive_prompt, negative=negative)
-        except httpx.HTTPError as e:
+        except Exception as e:
             logger.warning(f"Pollinations.ai failed: {e}. Trying Together AI fallback...")
             try:
                 image_bytes = await _together_fallback(positive_prompt, config, negative=negative)
-            except httpx.HTTPError:
+            except Exception:
                 logger.warning("Together AI failed. Trying Hugging Face fallback...")
                 image_bytes = await _huggingface_fallback(positive_prompt, config, negative=negative)
 
