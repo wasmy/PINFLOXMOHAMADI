@@ -182,14 +182,36 @@ def _pillow_generate(keyword: str) -> bytes:
     draw.rectangle([0, height - 12, width, height], fill=accent_color)
 
     # Load font (fallback to default if not available)
-    try:
-        font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 110)
-        font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 58)
-        font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 46)
-    except Exception:
-        font_large = ImageFont.load_default()
-        font_medium = font_large
-        font_small = font_large
+    # Font paths: Linux (VPS) first, then Windows fallback, then bundled
+    _font_paths_bold = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",          # Ubuntu VPS
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",   # Ubuntu alt
+        "C:/Windows/Fonts/arialbd.ttf",                                    # Windows Arial Bold
+        "C:/Windows/Fonts/verdanab.ttf",                                   # Windows Verdana Bold
+        "C:/Windows/Fonts/arial.ttf",                                      # Windows Arial
+    ]
+    _font_paths_regular = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+        "C:/Windows/Fonts/verdana.ttf",
+    ]
+
+    def _load_font(paths, size):
+        for path in paths:
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+        # Last resort: scale up the default font using a workaround
+        try:
+            return ImageFont.load_default(size=size)
+        except Exception:
+            return ImageFont.load_default()
+
+    font_large = _load_font(_font_paths_bold, 110)
+    font_medium = _load_font(_font_paths_bold, 58)
+    font_small = _load_font(_font_paths_regular, 46)
 
     # Wrap keyword text
     words = keyword.upper().split()

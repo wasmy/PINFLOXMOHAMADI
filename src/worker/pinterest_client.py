@@ -243,10 +243,17 @@ class PinterestClient:
             await self._fill_alt_text(page, metadata.alt_text)
             await self._random_delay(0.5, 1)
 
-            # Select board
+            # Select board — required to publish (without board, Pinterest saves as draft)
             if board:
-                await self._select_board(page, board)
-                await self._random_delay(1, 2)
+                board_selected = await self._select_board(page, board)
+                await self._random_delay(1.5, 2.5)
+                if not board_selected:
+                    # Try once more with a fresh attempt after a short wait
+                    await self._random_delay(2, 3)
+                    board_selected = await self._select_board(page, board)
+                    await self._random_delay(1, 2)
+                if not board_selected:
+                    logger.warning(f"Board '{board}' could not be selected — pin may be saved as draft instead of published")
 
             # Fill destination link (clickable URL on the pin)
             if destination_link:
@@ -511,40 +518,127 @@ class PinterestClient:
         return False
 
     async def _select_board(self, page: Page, board: str) -> bool:
+        """Select a board on the pin creation form. Tries multiple strategies."""
         try:
+            # Strategy 1: data-test-id selectors
             board_btn = page.locator(
                 'button[data-test-id="board-dropdown-select-button"], '
                 'div[data-test-id="board-selector"] button, '
                 'button[aria-label*="board" i]'
             ).first
-            if await board_btn.count() > 0 and await board_btn.is_visible():
-                await board_btn.click()
-                await self._random_delay(1, 2)
 
-                # Wait for board dropdown to appear and find the matching board
-                board_option = page.locator(
-                    f'div[data-test-id="board-row"] >> text="{board}"'
+            # Strategy 2: text-based fallback (Pinterest shows "Choose a board" placeholder)
+            if await board_btn.count() == 0 or not await board_btn.is_visible():
+                board_btn = page.locator(
+                    'button:has-text("Choose a board"), '
+                    'div:has-text("Choose a board") > button, '
+                    '[data-test-id="board-field"] button'
                 ).first
-                try:
-                    await board_option.wait_for(state="visible", timeout=3000)
+
+            # Strategy 3: any dropdown-looking button near "Board" label
+            if await board_btn.count() == 0 or not await board_btn.is_visible():
+                board_btn = await page.evaluate_handle("""
+                    () => {
+                        const labels = Array.from(document.querySelectorAll('label, div, span'));
+                        for (const el of labels) {
+                            if (el.textContent.trim() === 'Board') {
+                                let sibling = el.nextElementSibling;
+                                for (let i = 0; i < 5 && sibling; i++) {
+                                    const btn = sibling.querySelector('button') || (sibling.tagName === 'BUTTON' ? sibling : null);
+                                    if (btn) return btn;
+                                    sibling = sibling.nextElementSibling;
+                                }
+                                let parent = el.parentElement;
+                                for (let i = 0; i < 4 && parent; i++) {
+                                    const btn = parent.querySelector('button');
+                                    if (btn) return btn;
+                                    parent = parent.parentElement;
+                                }
+                            }
+                        }
+                        return null;
+                    }
+                """)
+                if board_btn:
+                    board_btn = page.locator(f'[data-test-id="board-dropdown-select-button"]').first
+                    # reset to positional click via JS
+                    await page.evaluate("""
+                        () => {
+                            const labels = Array.from(document.querySelectorAll('label, div, span'));
+                            for (const el of labels) {
+                                if (el.textContent.trim() === 'Board') {
+                                    let parent = el.parentElement;
+                                    for (let i = 0; i < 4 && parent; i++) {
+                                        const btn = parent.querySelector('button');
+                                        if (btn) { btn.click(); return true; }
+                                        parent = parent.parentElement;
+                                    }
+                                }
+                            }
+                        }
+                    """)
+                    await self._random_delay(1, 2)
+                    # Try to find and click the board option directly
+                    board_option = page.locator(f'div[data-test-id="board-row"], div[role="option"]').first
+                    if await board_option.count() > 0 and await board_option.is_visible():
+                        await board_option.click()
+                        logger.info(f"Board selected via JS label traversal")
+                        return True
+                    return False
+
+            if await board_btn.count() > 0 and await board_btn.is_visible():
+                await board_btn.scroll_into_view_if_needed()
+                await board_btn.click()
+                await self._random_delay(1.5, 2.5)
+
+                # Wait for dropdown to appear
+                await page.wait_for_selector(
+                    'div[data-test-id="board-row"], div[role="option"], input[placeholder*="Search" i]',
+                    timeout=5000
+                )
+
+                # Try to find board by exact name first
+                board_option = page.locator(
+                    f'div[data-test-id="board-row"]:has-text("{board}"), '
+                    f'div[role="option"]:has-text("{board}")'
+                ).first
+                if await board_option.count() > 0 and await board_option.is_visible():
                     await board_option.click()
                     await self._random_delay(1, 2)
                     logger.info(f"Board '{board}' selected")
                     return True
-                except Exception:
-                    # Try typing board name in search
-                    board_search = page.locator('input[placeholder*="Search" i], input[aria-label*="Search" i]').first
-                    if await board_search.count() > 0 and await board_search.is_visible():
-                        await board_search.fill(board)
+
+                # Try searching for the board
+                board_search = page.locator(
+                    'input[placeholder*="Search" i], input[aria-label*="Search" i]'
+                ).first
+                if await board_search.count() > 0 and await board_search.is_visible():
+                    await board_search.fill(board)
+                    await self._random_delay(1.5, 2)
+                    # Click first matching result
+                    first_result = page.locator(
+                        'div[data-test-id="board-row"], div[role="option"]'
+                    ).first
+                    if await first_result.count() > 0 and await first_result.is_visible():
+                        await first_result.click()
                         await self._random_delay(1, 2)
-                        first_result = page.locator('div[data-test-id="board-row"], div[role="option"]').first
-                        if await first_result.count() > 0 and await first_result.is_visible():
-                            await first_result.click()
-                            logger.info(f"Board '{board}' selected via search")
-                            return True
+                        logger.info(f"Board '{board}' selected via search")
+                        return True
+
+                # Last resort: click first available board option
+                first_board = page.locator(
+                    'div[data-test-id="board-row"], div[role="option"]'
+                ).first
+                if await first_board.count() > 0 and await first_board.is_visible():
+                    await first_board.click()
+                    await self._random_delay(1, 2)
+                    logger.info(f"Selected first available board (fallback)")
+                    return True
+
         except Exception as e:
             logger.warning(f"Board selection failed: {e}")
 
+        logger.warning(f"Could not select board '{board}' — pin will be saved as draft!")
         return False
 
     async def _fill_destination_link(self, page: Page, link: str) -> bool:
