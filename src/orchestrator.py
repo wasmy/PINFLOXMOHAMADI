@@ -333,6 +333,12 @@ async def run_daily_cycle(db: Database, config: dict, force: bool = False) -> No
     logger.info("=== Daily cycle complete ===")
 
 
+def _run_cycle_sync(db, config):
+    """Wrapper to run async daily cycle from APScheduler (sync context)."""
+    import asyncio
+    asyncio.run(run_daily_cycle(db, config))
+
+
 def start_scheduler(config: dict) -> None:
     """Start APScheduler with the daily cycle."""
     scheduler = BackgroundScheduler(timezone=config.get("schedule", {}).get("timezone", "UTC"))
@@ -341,7 +347,7 @@ def start_scheduler(config: dict) -> None:
 
     start_hour = config.get("schedule", {}).get("start_hour", 8)
     scheduler.add_job(
-        run_daily_cycle, 'cron', hour=start_hour, minute=0,
+        _run_cycle_sync, 'cron', hour=start_hour, minute=0,
         args=[db, config],
         id='daily_cycle',
         name='Daily Pinterest Growth Cycle'
