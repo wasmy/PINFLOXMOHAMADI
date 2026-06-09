@@ -1,0 +1,141 @@
+# Account
+account:
+  created_date: "2026-04-24" # Date the Pinterest account was created (for warming schedule)
+
+# Browser
+browser:
+  session_file: "data/pinterest_session.json" # Playwright session (auto-managed)
+  chrome_profile_path: "" # Optional: Path to custom Chrome profile (leave empty to use .env credentials)
+  headless: false # false = headful (recommended for debugging)
+
+# Niche Configuration
+niche:
+  seed_keywords:
+    # Sports Mom SVGs - biggest niche on Pinterest
+    - "Gymnastics Mom SVG shirt design"
+    - "Sports Mom PNG Cricut design"
+    - "Cheer Mom SVG digital download"
+    - "Dance Mom shirt SVG"
+    - "Funny Gymnastics Mom gift ideas"
+    - "Gym Mom Cricut cut file"
+    # ADHD Planners & Apps - trending niche
+    - "ADHD planner digital download"
+    - "ADHD brain dump template"
+    - "ADHD organization tools"
+    - "Second brain Notion template ADHD"
+    - "ADHD cleaning planner printable"
+    # Digital Planners & Apps
+    - "digital planner Etsy download"
+    - "offline planner HTML app"
+    - "teacher planner digital app"
+    - "family command center printable"
+    - "budget tracker digital download"
+    # Kids Printables
+    - "kids chore chart printable safari"
+    - "potty training reward chart toddler"
+    # Gymnastics Party & Gifts
+    - "gymnastics birthday party printable"
+    - "gymnastics planner goal tracker"
+  categories:
+    - "DIY and Crafts"
+    - "Women's Fashion"
+    - "Education"
+    - "Kids & Parenting"
+    - "Health"
+    - "Organization"
+
+# Posting Schedule
+schedule:
+  start_hour: 8 # Hour to run daily cycle (24h format)
+  timezone: "US/Eastern"
+  peak_hours: [10, 14, 18, 20] # Hours in 24h format
+  interval_min_minutes: 15 # Minimum gap between posts
+  interval_max_minutes: 45 # Maximum gap between posts
+
+# Posting Destination Link
+posting:
+  destination_link_mode: "both" # none | description_only | destination_link | both
+  default_destination_link: "https://www.etsy.com/shop/SmartStitchCo" # Etsy Store
+  # Maps keyword patterns to your real Pinterest board names
+  # Bot will use these instead of AI-generated board names
+  default_board: "Digital Planners"  # Fallback board for unmatched keywords
+  board_map:
+    "gymnastics": "Sports Mom Bundles"
+    "sports mom": "Sports Mom Bundles"
+    "cheer mom": "Sports Mom Bundles"
+    "dance mom": "Sports Mom Bundles"
+    "gym mom": "Sports Mom Bundles"
+    "svg": "SVG Crafts"
+    "cricut": "SVG Crafts"
+    "png": "SVG Crafts"
+    "cut file": "SVG Crafts"
+    "shirt design": "SVG Crafts"
+    "adhd": "Digital Planners"
+    "planner": "Digital Planners"
+    "notion": "Digital Planners"
+    "second brain": "Digital Planners"
+    "brain dump": "Digital Planners"
+    "budget tracker": "Digital Planners"
+    "teacher": "Digital Planners"
+    "digital download": "Digital Planners"
+    "chore chart": "Mom Life"
+    "potty training": "Mom Life"
+    "family command": "Mom Life"
+    "mom life": "Mom Life"
+    "funny": "Funny Animals PNG SVG"
+    "animal": "Funny Animals PNG SVG"
+    "app": "Apps & Dashboards"
+    "offline": "Apps & Dashboards"
+    "dashboard": "Apps & Dashboards"
+  keyword_product_map:
+    "gymnastics mom": "https://www.etsy.com/listing/4505129993"
+    "gym mom": "https://www.etsy.com/listing/4505129993"
+    "sports mom": "https://www.etsy.com/listing/4513647574"
+    "cheer mom": "https://www.etsy.com/listing/4505129993"
+    "dance mom": "https://www.etsy.com/listing/4505129993"
+    "adhd": "https://www.etsy.com/listing/4516561320"
+    "brain dump": "https://www.etsy.com/listing/4516561320"
+    "family command center": "https://www.etsy.com/listing/4515364107"
+    "potty training": "https://www.etsy.com/listing/4498177585"
+    "teacher planner": "https://www.etsy.com/listing/4508797169"
+    "gymnastics birthday": "https://www.etsy.com/listing/4495682780"
+    "gymnastics planner": "https://www.etsy.com/listing/4498716805"
+    "budget tracker": "https://www.etsy.com/listing/4500300221"
+
+# AI Configuration
+
+ai:
+  text_provider: "groq" # Uses OpenAI-compatible API (openai library)
+  text_model: "llama-3.3-70b-versatile" # Groq model for metadata + quality gate
+  image_provider: "pollinations" # Free, no API key needed
+  max_images_per_day: 15 # Hard cap on image generation calls
+  max_retries: 2 # Max regeneration attempts per pin
+
+# Safety & Anti-Detection
+safety:
+  proxy_rotation_hours: 3 # Rotate proxy every N hours
+  cooldown_hours: 48 # Cooldown duration after shadowban
+  enable_shadowban_check: true # Check pin visibility 24h after posting
+
+# Content Strategy
+strategy:
+  seo_percent: 70 # % of daily pins from SEO keywords
+  trend_percent: 30 # % of daily pins from trending topics
+  trend_boost_threshold: 2.0 # If trend velocity > this, boost trends to 50%
+
+# Local Image Generation (ComfyUI)
+comfyui:
+  enabled: false
+  host: "127.0.0.1"
+  port: 8188
+  model: "sd_xl_base_1.0.safetensors"
+  install_path: "" # Optional: Path to ComfyUI installation if enabled
+
+# Cost Limits
+limits:
+  max_api_cost_per_day: 0.00 # $0 — both Groq and Pollinations have free tiers
+
+# Paths (relative to project root)
+paths:
+  assets_dir: "assets"
+  database: "data/pga.db"

@@ -205,7 +205,18 @@ async def run_daily_cycle(db: Database, config: dict, force: bool = False) -> No
                 pin_id = db.insert_pin(pin)
                 logger.info(f"Pin {pin_id} created and queued for posting")
 
-                board_name = metadata.suggested_board or brief.board_name or "PGA Pins"
+                # Use board_map from config to pick a real existing board
+                posting_cfg = config.get("posting", {})
+                board_map = posting_cfg.get("board_map", {})
+                default_board = posting_cfg.get("default_board", "Digital Planners")
+                keyword_lower = brief.target_keyword.lower()
+                mapped_board = None
+                for pattern, bname in board_map.items():
+                    if pattern.lower() in keyword_lower:
+                        mapped_board = bname
+                        break
+                board_name = mapped_board or metadata.suggested_board or brief.board_name or default_board
+                logger.info(f"Board selected for '{brief.target_keyword}': {board_name}")
 
                 link_mode = metadata.destination_link_mode
                 dest_link = metadata.default_destination_link if link_mode in ("destination_link", "both") else ""

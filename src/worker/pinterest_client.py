@@ -252,6 +252,18 @@ class PinterestClient:
                     await self._random_delay(2, 3)
                     board_selected = await self._select_board(page, board)
                     await self._random_delay(1, 2)
+                # Verify board was actually set by checking button text
+                try:
+                    btn_text = await page.locator(
+                        'button[data-test-id="board-dropdown-select-button"], '
+                        'button:has-text("Choose a board")'
+                    ).first.inner_text(timeout=3000)
+                    if "Choose a board" in btn_text:
+                        logger.warning("Board dropdown still shows 'Choose a board' — trying one more time")
+                        await self._select_board(page, board)
+                        await self._random_delay(1.5, 2)
+                except Exception:
+                    pass
                 if not board_selected:
                     logger.warning(f"Board '{board}' could not be selected — pin may be saved as draft instead of published")
 
