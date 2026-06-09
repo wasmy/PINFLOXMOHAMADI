@@ -257,17 +257,21 @@ class PinterestClient:
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             await self._random_delay(1, 2)
 
-            # Click publish
+            # Click publish — exclude "Save as draft" by matching exact text
             publish_btn = page.locator(
-                'button:has-text("Publish"), button:has-text("Save"), button:has-text("نشر")'
+                'button:has-text("Publish"), div[data-test-id="pin-builder-publish-button"] button, button[data-test-id="publish-button"]'
             ).first
             try:
                 await publish_btn.wait_for(state="visible", timeout=10000)
+                await publish_btn.scroll_into_view_if_needed()
+                await self._random_delay(0.5, 1)
                 await publish_btn.click(force=True)
                 logger.info("Clicked publish button")
+                await self._random_delay(3, 5)
             except Exception as e:
                 logger.warning(f"Publish button click failed: {e}. Trying Ctrl+Enter...")
                 await page.keyboard.press("Control+Enter")
+                await self._random_delay(3, 5)
 
             # Wait for pin creation response from API using event (no polling race)
             try:

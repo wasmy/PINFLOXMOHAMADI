@@ -183,9 +183,9 @@ def _pillow_generate(keyword: str) -> bytes:
 
     # Load font (fallback to default if not available)
     try:
-        font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 72)
-        font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 40)
-        font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
+        font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 110)
+        font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 58)
+        font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 46)
     except Exception:
         font_large = ImageFont.load_default()
         font_medium = font_large
@@ -198,7 +198,7 @@ def _pillow_generate(keyword: str) -> bytes:
     for word in words:
         test = (line + " " + word).strip()
         bbox = draw.textbbox((0, 0), test, font=font_large)
-        if bbox[2] > width - 80 and line:
+        if bbox[2] > width - 60 and line:
             lines.append(line)
             line = word
         else:
@@ -207,24 +207,24 @@ def _pillow_generate(keyword: str) -> bytes:
         lines.append(line)
 
     # Draw keyword lines centered
-    total_text_h = len(lines) * 90
-    y_start = (height // 2) - (total_text_h // 2) - 60
+    total_text_h = len(lines) * 130
+    y_start = (height // 2) - (total_text_h // 2) - 80
     for line in lines:
         bbox = draw.textbbox((0, 0), line, font=font_large)
         x = (width - (bbox[2] - bbox[0])) // 2
         # Shadow
-        draw.text((x + 3, y_start + 3), line, font=font_large, fill="#00000030")
+        draw.text((x + 4, y_start + 4), line, font=font_large, fill="#00000040")
         draw.text((x, y_start), line, font=font_large, fill=text_color)
-        y_start += 90
+        y_start += 130
 
     # Divider line
-    draw.rectangle([(width // 2 - 120), y_start + 20, (width // 2 + 120), y_start + 24], fill=accent_color)
+    draw.rectangle([(width // 2 - 150), y_start + 25, (width // 2 + 150), y_start + 30], fill=accent_color)
 
     # Subtitle
     subtitle = "Digital Download • Etsy"
     bbox = draw.textbbox((0, 0), subtitle, font=font_medium)
     x = (width - (bbox[2] - bbox[0])) // 2
-    draw.text((x, y_start + 45), subtitle, font=font_medium, fill=text_color)
+    draw.text((x, y_start + 55), subtitle, font=font_medium, fill=text_color)
 
     # Bottom CTA
     cta = "Shop Now on Etsy ✦"
